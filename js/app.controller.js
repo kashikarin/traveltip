@@ -2,6 +2,7 @@ import { utilService } from './services/util.service.js'
 import { locService } from './services/loc.service.js'
 import { mapService } from './services/map.service.js'
 
+let gUserPos;
 window.onload = onInit
 
 // To make things easier in this project structure 
@@ -37,10 +38,15 @@ function renderLocs(locs) {
 
     var strHTML = locs.map(loc => {
         const className = (loc.id === selectedLocId) ? 'active' : ''
+        const locLatLng = {
+            lat: loc.geo.lat,
+            lng: loc.geo.lng
+        }
         return `
         <li class="loc ${className}" data-id="${loc.id}">
             <h4>  
                 <span>${loc.name}</span>
+                <span ${!gUserPos? 'hidden' : ""}>Distance: ${gUserPos? utilService.getDistance(locLatLng, gUserPos, "K") : ""}</span>
                 <span title="${loc.rate} stars">${'★'.repeat(loc.rate)}</span>
             </h4>
             <p class="muted">
@@ -130,6 +136,7 @@ function onPanToUserPos() {
         .then(latLng => {
             mapService.panTo({ ...latLng, zoom: 15 })
             unDisplayLoc()
+            gUserPos = latLng;
             loadAndRenderLocs()
             flashMsg(`You are at Latitude: ${latLng.lat} Longitude: ${latLng.lng}`)
         })
@@ -169,19 +176,30 @@ function onSelectLoc(locId) {
 }
 
 function displayLoc(loc) {
+    const prevElDistance = document.querySelector('.selected-loc-distance');
+    if (prevElDistance) prevElDistance.remove();
     document.querySelector('.loc.active')?.classList?.remove('active')
     document.querySelector(`.loc[data-id="${loc.id}"]`).classList.add('active')
-
     mapService.panTo(loc.geo)
     mapService.setMarker(loc)
 
     const el = document.querySelector('.selected-loc')
     el.querySelector('.loc-name').innerText = loc.name
+    if (gUserPos){
+        const locLatLng = {
+            lat: loc.geo.lat,
+            lng: loc.geo.lng
+        }
+        let html = `<h4 class='selected-loc-distance'>Distance: <span>${utilService.getDistance(locLatLng, gUserPos, "K")}</span></h4>`
+        let elDistance = document.createElement('h4');
+        elDistance.innerHTML = html;
+        el.insertBefore(elDistance, el.querySelector('.loc-address'));
+    }
+
     el.querySelector('.loc-address').innerText = loc.geo.address
     el.querySelector('.loc-rate').innerHTML = '★'.repeat(loc.rate)
     el.querySelector('[name=loc-copier]').value = window.location
     el.classList.add('show')
-
     utilService.updateQueryParams({ locId: loc.id })
 }
 
@@ -264,6 +282,7 @@ function renderLocStats() {
     locService.getLocCountByRateMap().then(stats => {
         handleStats(stats, 'loc-stats-rate')
     })
+    locService.getLocCountByLastUpdateMap().then(stats => handleStats(stats, 'loc-stats-updated'))
 }
 
 function handleStats(stats, selector) {
