@@ -71,6 +71,13 @@
                 </section>
             </section>
         </div>
+        <dialog>
+            <form onsubmit="app.onSubmitDialog(event)">
+                <input name='name' class='dialog-name' type="text">
+                <input name='rate' class='dialog-rate' type="number">
+                <button>Save</button>
+            </form>
+        </dialog>
     </main>
     <pre class="debug" hidden></pre>
     <div class="user-msg"></div>
